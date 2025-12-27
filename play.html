@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>深夜燒肉模擬器</title>
+<style>
+/* --- 全域與基礎設定 --- */
+body{margin:0;background:#f5efe6;font-family:sans-serif;user-select:none;touch-action:none;overflow:hidden;}
+
+/* --- UI 控制項 (垂直排列) --- */
+#ui{
+  position:fixed;top:14px;left:14px;z-index:1000;
+  display:flex;
+  flex-direction: column; /* 垂直排列 */
+  gap:10px;
+}
+#ui button{
+  padding:10px 22px;border-radius:999px;border:none;font-size:16px;cursor:pointer;
+  background:linear-gradient(135deg,#ffb703,#ff6a00);color:#fff;box-shadow:0 6px 15px rgba(0,0,0,.25);
+  font-weight:700;
+}
+
+/* --- 點餐頁 --- */
+#meatMenu{
+  position:fixed;top:70px;left:14px;width:260px;padding:14px;border-radius:22px;
+  background:linear-gradient(180deg,#fff,#f7efe3);box-shadow:0 20px 40px rgba(0,0,0,.25);
+  display:none;z-index:1000;
+}
+#meatMenu h2{margin:4px 0 12px;font-size:18px;text-align:center;}
+.orderItem{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;margin-bottom:10px;
+border-radius:16px;background:#fff;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.15);transition:.15s;}
+.orderItem:hover{transform:scale(1.03);}
+.orderName{font-size:16px;font-weight:700;}
+.orderPrice{font-size:14px;opacity:.7;}
+
+/* --- 狀態 HUD (橫向) --- */
+#status{
+  position:fixed;top:16px;right:16px;
+  padding:10px 16px;
+  border-radius:18px;
+  background:linear-gradient(180deg,#fff,#f5efe6);box-shadow:0 10px 30px rgba(0,0,0,.25);z-index:1000;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 20px;
+}
+.status-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+#status .label{font-size:12px;opacity:.6; margin-bottom: 2px;}
+#status .value{font-size:20px;font-weight:700;margin-bottom:0;}
+#timer{font-size:24px;color:#ff6a00;font-weight:900;margin:0;}
+#fullContainer {
+    width: 100px;
+    margin-left: 10px;
+}
+#fullContainer .label {
+    margin-bottom: 4px;
+}
+#fullBar{height:8px;background:#ddd;border-radius:999px;overflow:hidden;margin-top:0;}
+#fullBarInner{height:100%;width:0%;background:linear-gradient(90deg,#ffb703,#ff6a00);transition:.3s;}
+
+
+/* --- 場景與物件 --- */
+#table{width:100vw;height:100vh;background:url(./images/table.jpg) center/cover;position:relative;overflow:hidden;}
+#grill{
+  width:70vmin; max-width:450px; 
+  height:70vmin; max-width:450px;
+  position:absolute;left:40%;top:45%;transform:translate(-50%,-50%); 
+  background:url(./images/grill.png) no-repeat center/100% 100%;
+}
+#plate{
+  width:35vmin; max-width:280px;
+  height:35vmin; max-width:280px;
+  position:absolute;bottom:45%;right:5%; 
+  background:url(./images/plate.png) no-repeat center/100% 100%;border-radius:30px;box-shadow:0 0 15px #999;
+}
+#bowl{
+  width:20vmin; max-width:160px;
+  height:20vmin; max-width:160px;
+  position:absolute;bottom:10%;right:10%; 
+  background:url(./images/bowl.png) no-repeat center/100% 100%;border-radius:90px;box-shadow:0 0 10px #aaa;
+}
+.item{
+  position:absolute;width:20vmin; max-width:200px;
+  cursor:grab;z-index:10;
+}
+
+/* 手機版調整 */
+@media (max-width: 600px) {
+  #grill {
+    width:75vw; height:75vw;
+    top:35%; left:50%;
+    transform:translate(-50%, -50%);
+  }
+  #plate {
+    width:40vw; height:40vw;
+    bottom:10%; left:5%;
+    right:auto; 
+  }
+  #bowl {
+    width:25vw; height:25vw;
+    bottom:10%; right:5%;
+  }
+  .item {
+    width:25vw;
+  }
+  #status {
+      top: 10px;
+      right: 10px;
+      gap: 12px;
+  }
+  #fullContainer {
+      width: 80px;
+      margin-left: 0;
+  }
+}
+</style>
+</head>
+<body>
+
+<div id="ui">
+  <button onclick="toggleMenu()">點餐</button>
+  <button onclick="endGame()">結束遊戲</button>
+</div>
+
+<div id="meatMenu">
+  <h2>燒肉點餐</h2>
+  <div class="orderItem" onclick="bringMeat('beef')"><div class="orderName">牛肉</div><div class="orderPrice">$80</div></div>
+  <div class="orderItem" onclick="bringMeat('pork')"><div class="orderName">豬肉</div><div class="orderPrice">$50</div></div>
+  <div class="orderItem" onclick="bringMeat('chicken')"><div class="orderName">雞肉</div><div class="orderPrice">$45</div></div>
+</div>
+
+<div id="status">
+    <div class="status-group">
+        <div class="label">剩餘時間</div>
+        <div id="timer">03:00</div>
+    </div>
+    <div class="status-group">
+        <div class="label">金額</div>
+        <div class="value" id="money">0</div>
+    </div>
+    <div id="fullContainer" class="status-group">
+        <div class="label">飽足感</div>
+        <div class="value" id="full">0</div>
+        <div id="fullBar"><div id="fullBarInner"></div></div>
+    </div>
+</div>
+
+<div id="table">
+  <div id="grill"></div>
+  <div id="plate"></div>
+  <div id="bowl"></div>
+</div>
+
+<script>
+const grill=document.getElementById('grill');
+const plate=document.getElementById('plate');
+const bowl=document.getElementById('bowl');
+const menu=document.getElementById('meatMenu');
+const timerDisplay=document.getElementById('timer');
+
+// *** 延遲音訊加載：初始為 null ***
+let eat=null;
+let oil=null;
+let OMG=null;
+let umai=null;
+let gs = null;
+let bm = null;
+let wn = null;
+let audioLoaded = false; // 追蹤是否已加載
+
+function loadAudio() {
+    if (audioLoaded) return;
+    
+    // 在此處實例化所有 Audio 物件
+    eat=new Audio('./media/eating.mp3');
+    oil=new Audio('./media/oil.mp3');
+    OMG=new Audio('./media/OMG.mp3');
+    umai=new Audio('./media/umai.mp3');
+    gs  = new Audio("./media/grill sound.mp3");
+    bm  = new Audio("./media/shape of you but its low quality.mp3");
+    wn  = new Audio("./media/whitenoise.mp3");
+
+    audioLoaded = true;
+}
+// **********************************
+
+// 數值
+let full=0;
+let money=0;
+const fullGain={beef:35,pork:25,chicken:20};
+const price={beef:80,pork:50,chicken:45};
+
+// 剩餘肉片的飽足感懲罰值 
+const wastePenalty = {
+    beef: 30,
+    pork: 30,
+    chicken: 30
+};
+
+const fullSpan=document.getElementById('full');
+const moneySpan=document.getElementById('money');
+const fullBarInner=document.getElementById('fullBarInner');
+let gameTimer;
+const initialTime = 3 * 60; // 3分鐘
+let timeLeft = initialTime;
+
+function updateStatus(){
+  fullSpan.textContent=full;
+  moneySpan.textContent=money;
+  fullBarInner.style.width=(full%100)+'%';
+}
+
+const meats={
+  beef:['./images/beef.png','./images/beef_raw.png','./images/beef_edible.png','./images/beef_overcook.png'],
+  pork:['./images/pork.png','./images/pork_raw.png','./images/pork_edible.png','./images/pork_overcook.png'],
+  chicken:['./images/chicken.png','./images/chicken_raw.png','./images/chicken_edible.png','./images/chicken_overcook.png']
+};
+
+function toggleMenu(){
+  menu.style.display=menu.style.display==='block'?'none':'block';
+  
+  // 優化：點擊點餐時才加載音訊
+  if (!audioLoaded) {
+      loadAudio();
+  }
+  
+  // 背景音樂
+  if(!gameTimer) startTimer(); 
+  
+  if (audioLoaded) {
+      bm.loop = wn.loop = gs.loop = true;
+      bm.volume = 0.04; wn.volume = 0.4; gs.volume = 0.6;
+      bm.play(); wn.play(); gs.play();
+  }
+}
+
+function bringMeat(type){
+  const m=document.createElement('img');
+  m.src=meats[type][0];
+  m.className='item';
+
+  let randX, randY;
+  
+  // *** 新增: 檢查視窗寬度決定生成位置 ***
+  if (window.innerWidth <= 600) {
+      // 手機/小螢幕：烤網下方區域 (X: 30%~70%, Y: 55%~75%)
+      randX = 5 + Math.random() * 80; 
+      randY = 45 + Math.random() * 10; 
+  } else {
+      // 電腦/大螢幕：左上角區域 (X: 0%~40%, Y: 20%~60%)
+      randX = Math.random() * 20; 
+      randY = 20 + Math.random() * 70; 
+  }
+
+  m.style.left = randX + 'vw';
+  m.style.top = randY + 'vh';
+  
+  m.dataset.type=type;
+  m.dataset.state=0;
+  // 支援觸控與滑鼠拖曳
+  m.onmousedown=e=>startDrag(e,m, false);
+  m.ontouchstart=e=>startDrag(e,m, true);
+
+  document.getElementById('table').appendChild(m);
+  menu.style.display='none';
+  money+=price[type];
+  updateStatus();
+}
+
+// --- 拖曳與觸控邏輯 (不變) ---
+let dragItem=null,offsetX=0,offsetY=0, isTouch=false;
+function getEventClientXY(e, isTouch){
+  return isTouch ? {
+    clientX: e.touches[0].clientX,
+    clientY: e.touches[0].clientY
+  } : {
+    clientX: e.clientX,
+    clientY: e.clientY
+  };
+}
+
+function startDrag(e,item, touch){
+  if (touch) e.preventDefault();
+  dragItem=item;
+  isTouch = touch;
+  const eventXY = getEventClientXY(e, isTouch);
+  const rect = item.getBoundingClientRect();
+  offsetX=eventXY.clientX - rect.left;
+  offsetY=eventXY.clientY - rect.top;
+}
+
+document.onmousemove=e=>{
+  if(!dragItem || isTouch)return;
+  dragItem.style.left=e.pageX-offsetX+'px';
+  dragItem.style.top=e.pageY-offsetY+'px'
+};
+
+document.ontouchmove=e=>{
+  if(!dragItem || !isTouch)return;
+  e.preventDefault(); 
+  const eventXY = getEventClientXY(e, isTouch);
+  dragItem.style.left=eventXY.clientX - offsetX + 'px';
+  dragItem.style.top=eventXY.clientY - offsetY + 'px'
+};
+
+document.onmouseup=()=>{
+  if(!dragItem || isTouch)return;
+  handleDrop();
+};
+
+document.ontouchend=()=>{
+  if(!dragItem || !isTouch)return;
+  handleDrop();
+};
+
+function handleDrop() {
+  if(isOver(grill,dragItem) && !dragItem.cookTimer) startCooking(dragItem);
+  if(isOver(bowl,dragItem)) eatMeat(dragItem);
+  dragItem=null;
+}
+
+function isOver(t,o){
+  const a=t.getBoundingClientRect(),b=o.getBoundingClientRect();
+  return !(b.right<a.left||b.left>a.right||b.bottom<a.top||b.top>a.bottom)
+}
+
+function startCooking(meat){
+  if(meat.dataset.state>=3 || meat.cookTimer) return;
+  // 優化：加載檢查
+  if (oil) { oil.currentTime=0; oil.volume = 0.7; oil.play(); }
+  
+  let s=parseInt(meat.dataset.state);
+  const type=meat.dataset.type;
+  if(s===0){s=1; meat.dataset.state=s; meat.src=meats[type][s]}
+  
+  if(!isOver(grill, meat)) return; 
+  
+  meat.cookTimer=setInterval(()=>{
+    if(!isOver(grill, meat)) {
+      return; 
+    } 
+    s++; 
+    if(s<=3){
+      meat.dataset.state=s; 
+      meat.src=meats[type][s]
+    }
+    if(s>=3) {
+      clearInterval(meat.cookTimer);
+    }
+  }, Math.random()*5000+5000)
+}
+
+function eatMeat(meat){
+  const state=parseInt(meat.dataset.state);
+  const type=meat.dataset.type;
+  if(meat.cookTimer) clearInterval(meat.cookTimer);
+  
+  // 優化：加載檢查
+  if (eat) { eat.currentTime=0; eat.play(); }
+
+  meat.remove();
+  setTimeout(()=>{
+    if(state===2){
+      full+=fullGain[type];
+      // 優化：加載檢查
+      if (umai) { umai.currentTime=0; umai.volume=0.5; umai.play(); }
+    } else {
+      full = Math.max(0, full - Math.floor(fullGain[type]/2));
+      // 優化：加載檢查
+      if (OMG) { OMG.currentTime=0; OMG.play(); }
+    }
+    updateStatus();
+  },800)
+}
+
+// --- 計時器功能 (不變) ---
+function formatTime(totalSeconds) {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function updateTimer() {
+    timeLeft--;
+    timerDisplay.textContent = formatTime(timeLeft);
+
+    if (timeLeft <= 0) {
+        clearInterval(gameTimer);
+        endGame(true);
+    } else if (timeLeft <= 30) {
+        timerDisplay.style.color = 'red';
+    }
+}
+
+function startTimer() {
+    if (gameTimer) return; 
+    gameTimer = setInterval(updateTimer, 1000);
+}
+
+function endGame(isTimeUp = false){
+  clearInterval(gameTimer);
+  
+  // 剩肉懲罰計算 (不變)
+  let totalPenalty = 0;
+  const remainingMeats = document.querySelectorAll('.item');
+  remainingMeats.forEach(meat => {
+    const type = meat.dataset.type;
+    const penalty = wastePenalty[type] || 0;
+    totalPenalty += penalty;
+    if(meat.cookTimer) clearInterval(meat.cookTimer);
+    meat.remove();
+  });
+
+  const finalFull = Math.max(0, full - totalPenalty);
+  
+  // 優化：停止所有音樂 (檢查是否已加載)
+  if (audioLoaded) {
+      [bm, wn, gs, eat, oil, OMG, umai].forEach(audio => {
+          audio.pause();
+          audio.currentTime = 0;
+      });
+  }
+
+  // 儲存結果
+  localStorage.setItem('finalMoney',money);
+  localStorage.setItem('finalFull',finalFull);
+  
+  if (totalPenalty > 0) {
+      localStorage.setItem('endReason', (isTimeUp ? '時間到' : '主動結束') + ` (浪費扣${totalPenalty}飽足感)`);
+  } else {
+      localStorage.setItem('endReason', isTimeUp ? '時間到' : '主動結束');
+  }
+
+
+  window.location.href='end.html';
+}
+
+updateStatus();
+timerDisplay.textContent = formatTime(initialTime);
+
+</script>
+</body>
+</html>

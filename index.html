@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>深夜燒肉模擬器｜開始</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+<script>
+  function openHelp(){
+
+    alert('在點餐頁面點你想要的餐，遊戲即開始，將肉拖曳到烤盤烤熟，烤完可以放在盤子，放碗裡可以吃掉，注意別烤焦喔。\n在3分鐘內你能拿到多少飽足感呢?\n注意不要浪費食物，會有懲罰喔');
+
+  }
+</script>
+<style>
+  * { box-sizing:border-box; }
+  body {
+    margin:0;
+    font-family:'Noto Sans TC', sans-serif;
+    /* 深夜背景 */
+    background:linear-gradient(180deg,#1a120c,#0a0604);
+    color:#f5efe6;
+    overflow:hidden;
+    height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+  }
+
+  /* 背景火焰感 */
+  .bg-fire {
+    position:fixed;
+    inset:0;
+    background:
+      radial-gradient(circle at 20% 80%, rgba(255,140,0,0.35), transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(255,80,0,0.3), transparent 45%),
+      radial-gradient(circle at 50% 90%, rgba(255,180,60,0.25), transparent 50%);
+    animation: fire 6s ease-in-out infinite alternate;
+  }
+  @keyframes fire {
+    0% { transform: scale(1.0); }
+    100% { transform: scale(1.1); opacity: 0.8; }
+  }
+
+  /* 煙霧特效 */
+  .bg-smoke {
+    position:fixed;
+    inset:0;
+    background:
+      radial-gradient(circle at 70% 20%, rgba(100,100,100,0.1), transparent 30%),
+      radial-gradient(circle at 30% 10%, rgba(100,100,100,0.15), transparent 35%);
+    animation: smoke 12s ease-in-out infinite alternate;
+    opacity: 0.5;
+  }
+  @keyframes smoke {
+    0% { transform: translateX(0) translateY(0); }
+    50% { transform: translateX(5px) translateY(-5px); }
+    100% { transform: translateX(-5px) translateY(5px); }
+  }
+
+
+  .container {
+    position:relative;
+    z-index:10;
+    text-align:center;
+    padding:20px;
+    background:rgba(0,0,0,0.4); /* 讓文字更清晰 */
+    border-radius:15px;
+  }
+
+  /* Logo 燒烤發光特效 */
+  .logo {
+    font-family:'Noto Sans TC', sans-serif;
+    font-size:72px;
+    font-weight:900;
+    color:#ffddaa;
+    /* 燒烤漸變與發光 */
+    text-shadow:
+        0 0 5px #ff6a00, /* 內層微光 */
+        0 0 10px #ffb703, /* 中層亮光 */
+        0 0 20px rgba(255,100,0,0.8), /* 外層火光 */
+        2px 2px 3px rgba(0,0,0,0.8); /* 陰影層次 */
+    margin-bottom:10px;
+    animation: pulseGlow 1.5s infinite alternate;
+  }
+
+  @keyframes pulseGlow {
+      from { text-shadow: 0 0 5px #ff6a00, 0 0 10px #ffb703, 0 0 20px rgba(255,100,0,0.8), 2px 2px 3px rgba(0,0,0,0.8); }
+      to { text-shadow: 0 0 8px #ff6a00, 0 0 15px #ffb703, 0 0 30px rgba(255,100,0,1), 2px 2px 3px rgba(0,0,0,0.8); }
+  }
+
+  .subtitle {
+    font-size:20px;
+    opacity:0.6;
+    margin-bottom:40px;
+  }
+
+  /* 烤盤預覽動畫優化 */
+  .grill-preview {
+    margin:20px auto;
+    width:100px; height:100px;
+    border:5px solid #ffb703;
+    border-radius:10px;
+    background:linear-gradient(180deg, #333, #111);
+    position:relative;
+    overflow:hidden;
+    box-shadow: 0 0 15px rgba(255,120,0,0.7);
+  }
+  .grill-line {
+    width:100%; height:10px;
+    background:rgba(255,255,255,0.1);
+    position:absolute;
+    animation: slideLine 3s linear infinite;
+  }
+  .grill-line:nth-child(1) { top:10%; animation-delay:0s; }
+  .grill-line:nth-child(2) { top:40%; animation-delay:1.5s; }
+  .grill-line:nth-child(3) { top:70%; animation-delay:3s; }
+
+  @keyframes slideLine {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  .btn-group {
+    margin-top:30px;
+    display:flex;
+    flex-direction:column;
+    gap:15px;
+  }
+
+  .btn {
+    padding:14px 40px;
+    border:none;
+    border-radius:999px;
+    background:linear-gradient(135deg,#ffb703,#ff6a00);
+    color:#2b1d14;
+    font-size:18px;
+    font-weight:700;
+    cursor:pointer;
+    box-shadow:0 6px 20px rgba(255,120,0,0.5);
+    transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+  }
+
+  .btn:hover {
+    transform:translateY(-2px) scale(1.02);
+    box-shadow:0 10px 30px rgba(255,120,0,0.8);
+    background:linear-gradient(135deg,#ffc840,#ff7b20);
+  }
+
+  .btn.secondary {
+    background:transparent;
+    color:#f5efe6;
+    border:2px solid rgba(255,200,120,0.6);
+    box-shadow:none;
+  }
+
+  .btn.secondary:hover {
+    box-shadow:0 0 15px rgba(255,200,120,0.4);
+    background:rgba(255,200,120,0.1);
+    transform:translateY(-1px) scale(1.01);
+  }
+
+  .footer {
+    position:fixed;
+    bottom:12px;
+    font-size:12px;
+    opacity:0.4;
+  }
+
+  @media (max-width: 600px) {
+      .logo { font-size: 50px; }
+      .container { padding: 15px; }
+  }
+  
+</style>
+</head>
+<body>
+
+<div class="bg-fire"></div>
+<div class="bg-smoke"></div>
+
+<div class="container">
+  <div class="logo">深夜燒肉模擬器</div>
+  <div class="subtitle">Yakiniku Simulator</div>
+
+  <div class="grill-preview">
+    <div class="grill-line"></div>
+    <div class="grill-line"></div>
+    <div class="grill-line"></div>
+  </div>
+
+  <div class="btn-group">
+    <button class="btn" onclick="location.href='play.html'">開始遊戲</button>
+    <button class="btn secondary" onclick="openHelp()">玩法說明</button>
+  </div>
+</div>
+
+<div class="footer">
+  請使用電腦或手機瀏覽器遊玩
+</div>
+
+</body>
+</html>
